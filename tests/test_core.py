@@ -52,3 +52,141 @@ def test_discover_files():
         # Discover files with binary included
         files_with_binary = discover_files(tmpdir, ignore_binary=False)
         assert files_with_binary == ["src/helper.py", "src/logo.png", "src/main.py"]
+
+
+
+def test_discover_files_empty_dir():
+    """File discovery on an empty directory returns an empty list."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        assert discover_files(tmpdir) == []
+
+
+def test_discover_files_non_existent_dir():
+    """File discovery on a non-existent directory returns an empty list."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nonexistent = os.path.join(tmpdir, "does_not_exist")
+        assert discover_files(nonexistent) == []
+
+
+def test_discover_files_all_ignored():
+    """All files match ignore patterns -> empty result."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for d in (".git", "__pycache__"):
+            os.makedirs(os.path.join(tmpdir, d))
+        with open(os.path.join(tmpdir, ".git", "HEAD"), "w") as f:
+            f.write("ref: refs/heads/main")
+        with open(os.path.join(tmpdir, "__pycache__", "foo.cpython-311.pyc"), "w") as f:
+            f.write("cached")
+        with open(os.path.join(tmpdir, ".DS_Store"), "w") as f:
+            f.write("")
+        assert discover_files(tmpdir) == []
+
+
+def test_discover_files_custom_ignore():
+    """Custom ignore lists override defaults correctly."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "mylogs"))
+        os.makedirs(os.path.join(tmpdir, ".git"))
+        with open(os.path.join(tmpdir, "mylogs", "app.log"), "w") as f:
+            f.write("log")
+        with open(os.path.join(tmpdir, ".git", "config"), "w") as f:
+            f.write("[core]")
+        with open(os.path.join(tmpdir, "readme.md"), "w") as f:
+            f.write("# Readme")
+        files = discover_files(tmpdir, ignore_dirs={"mylogs"}, ignore_files=set())
+        assert ".git/config" in files
+        assert "readme.md" in files
+        assert "mylogs/app.log" not in files
+
+
+def test_discover_files_only_text():
+    """Binary files are excluded by default."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("x = 1")
+        with open(os.path.join(tmpdir, "src", "data.bin"), "wb") as f:
+            f.write(b"\x00\x01\x02\xff")
+        with open(os.path.join(tmpdir, "src", "empty.bin"), "wb") as f:
+            f.write(b"")
+        files = discover_files(tmpdir)
+        assert files == ["src/empty.bin", "src/main.py"]
+
+
+def test_discover_files_deep_nesting():
+    """Deeply nested non-ignored directories are discovered."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "a", "b", "c", "d")
+        os.makedirs(path)
+        with open(os.path.join(path, "deep.txt"), "w") as f:
+            f.write("deep")
+        files = discover_files(tmpdir)
+        assert files == [os.path.join("a", "b", "c", "d", "deep.txt")]
+
+
+def test_discover_files_ignored_dirs_not_traversed():
+    """Ignored directories are pruned from os.walk traversal (not just filtered)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".git", "objects", "pack"))
+        with open(os.path.join(tmpdir, ".git", "objects", "pack", "big.pack"), "w") as f:
+            f.write("packed")
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+        files = discover_files(tmpdir)
+        assert files == ["src/main.py"]
+        assert ".git/objects/pack/big.pack" not in files
+
+
+# ── Helper: format a list of file paths as a markdown context snippet ──────────
+
+def _files_to_markdown(file_list, root_label="Project Context"):
+    """Convert a sorted list of file paths into a markdown context string."""
+    lines = [f"# {root_label}", ""]
+    for path in file_list:
+        lines.append(f"## File: {path}")
+        lines.append("```")
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def test_markdown_format_empty():
+    """An empty file list produces a minimal markdown document."""
+    md = _files_to_markdown([])
+    expected = "# Project Context\n"
+    assert md == expected
+
+
+def test_markdown_format_single_file():
+    """Markdown output for a single file is well-formed."""
+    md = _files_to_markdown(["src/main.py"])
+    assert md.startswith("# Project Context")
+    assert "## File: src/main.py" in md
+    assert md.count("## File:") == 1
+
+
+def test_markdown_format_multiple_files():
+    """Markdown output lists multiple files in order."""
+    paths = ["a.py", "b.py", "c.py"]
+    md = _files_to_markdown(paths)
+    idx_a = md.index("## File: a.py")
+    idx_b = md.index("## File: b.py")
+    idx_c = md.index("## File: c.py")
+    assert idx_a < idx_b < idx_c
+
+
+def test_markdown_format_integration():
+    """Real discovered files are correctly formatted as markdown."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("print('hi')")
+        with open(os.path.join(tmpdir, "README.md"), "w") as f:
+            f.write("# Project")
+        files = discover_files(tmpdir)
+        assert files == ["README.md", "src/main.py"]
+        md = _files_to_markdown(files)
+        assert "## File: README.md" in md
+        assert "## File: src/main.py" in md
+        assert md.index("## File: README.md") < md.index("## File: src/main.py")
