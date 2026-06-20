@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from code_to_markdown_context_dumper.core import discover_files, is_binary_file, should_ignore
+from code_to_markdown_context_dumper.core import discover_files, is_binary_file, should_ignore, discover_filtered_files
 
 def test_is_binary_file():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -190,3 +190,68 @@ def test_markdown_format_integration():
         assert "## File: README.md" in md
         assert "## File: src/main.py" in md
         assert md.index("## File: README.md") < md.index("## File: src/main.py")
+
+
+# ── [f02-s2] Tests for custom ignore patterns and file size limits ───────────
+
+
+def test_discover_filtered_files_custom_patterns():
+    """Custom glob-style ignore patterns exclude matching files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "src"))
+        os.makedirs(os.path.join(tmpdir, "logs"))
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+        with open(os.path.join(tmpdir, "src", "data.txt"), "w") as f:
+            f.write("data")
+        with open(os.path.join(tmpdir, "logs", "app.log"), "w") as f:
+            f.write("log entry")
+        with open(os.path.join(tmpdir, "logs", "access.log"), "w") as f:
+            f.write("GET / 200")
+
+        files = discover_filtered_files(tmpdir, ignore_patterns=["*.log"])
+        assert "src/main.py" in files
+        assert "src/data.txt" in files
+        assert "logs/app.log" not in files
+        assert "logs/access.log" not in files
+
+
+def test_discover_filtered_files_max_size():
+    """Files exceeding the size limit are excluded."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "small.txt"), "w") as f:
+            f.write("x" * 50)
+        with open(os.path.join(tmpdir, "large.txt"), "w") as f:
+            f.write("x" * 200)
+        with open(os.path.join(tmpdir, "medium.txt"), "w") as f:
+            f.write("x" * 100)
+
+        files = discover_filtered_files(tmpdir, max_size=100)
+        assert "small.txt" in files
+        assert "medium.txt" in files
+        assert "large.txt" not in files
+
+
+def test_discover_filtered_files_patterns_and_size():
+    """Both custom patterns and max_size filters are applied together."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "notes.txt"), "w") as f:
+            f.write("hello")
+        with open(os.path.join(tmpdir, "trace.log"), "w") as f:
+            f.write("x" * 500)
+        with open(os.path.join(tmpdir, "small.log"), "w") as f:
+            f.write("tiny")
+
+        files = discover_filtered_files(tmpdir, ignore_patterns=["*.log"], max_size=100)
+        assert files == ["notes.txt"]
+
+
+def test_discover_filtered_files_no_filters():
+    """With no custom filters, behaves identically to discover_files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+        with open(os.path.join(tmpdir, "README.md"), "w") as f:
+            f.write("# Project")
+        assert discover_filtered_files(tmpdir) == discover_files(tmpdir)
