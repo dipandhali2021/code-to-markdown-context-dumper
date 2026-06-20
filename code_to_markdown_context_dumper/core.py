@@ -194,3 +194,105 @@ def discover_filtered_files(
 
     return filtered
 
+
+# Sub-task: [f01-s2] Implement markdown generation logic in core.py
+# Acceptance: Function to format file contents into markdown code blocks
+# with file path headers is implemented.
+
+def _infer_language(file_path: str) -> str:
+    """
+    Infer a markdown code-fence language identifier from a file extension.
+    Returns an empty string if the language cannot be determined.
+    """
+    _LANG_MAP = {
+        ".py": "python",
+        ".js": "javascript",
+        ".ts": "typescript",
+        ".tsx": "tsx",
+        ".jsx": "jsx",
+        ".rs": "rust",
+        ".go": "go",
+        ".java": "java",
+        ".c": "c",
+        ".cpp": "cpp",
+        ".h": "c",
+        ".hpp": "cpp",
+        ".cs": "csharp",
+        ".rb": "ruby",
+        ".php": "php",
+        ".swift": "swift",
+        ".kt": "kotlin",
+        ".scala": "scala",
+        ".sh": "bash",
+        ".bash": "bash",
+        ".zsh": "bash",
+        ".fish": "fish",
+        ".ps1": "powershell",
+        ".bat": "batch",
+        ".cmd": "batch",
+        ".html": "html",
+        ".htm": "html",
+        ".css": "css",
+        ".scss": "scss",
+        ".less": "less",
+        ".json": "json",
+        ".xml": "xml",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+        ".toml": "toml",
+        ".ini": "ini",
+        ".cfg": "ini",
+        ".md": "markdown",
+        ".rst": "rst",
+        ".tex": "latex",
+        ".sql": "sql",
+        ".r": "r",
+        ".m": "matlab",
+        ".pl": "perl",
+        ".lua": "lua",
+        ".dart": "dart",
+        ".dockerfile": "dockerfile",
+        ".makefile": "makefile",
+        ".cmake": "cmake",
+        ".gradle": "gradle",
+        ".tf": "terraform",
+        ".graphql": "graphql",
+        ".proto": "protobuf",
+    }
+    ext = os.path.splitext(file_path)[1].lower()
+    return _LANG_MAP.get(ext, "")
+
+
+def format_markdown_context(
+    files: list,
+    root_label: str = "Project Context",
+) -> str:
+    """
+    Format a list of files and their contents into a markdown context document.
+
+    Each file is rendered as a level‑2 heading followed by a fenced code block
+    with syntax highlighting inferred from the file extension.
+
+    Parameters
+    ----------
+    files : list of (str, str)
+        List of ``(file_path, content)`` tuples.
+    root_label : str
+        Top-level heading label (default: ``"Project Context"``).
+
+    Returns
+    -------
+    str
+        Formatted markdown string.
+    """
+    lines = [f"# {root_label}", ""]
+    for file_path, content in files:
+        lines.append(f"## File: {file_path}")
+        lang = _infer_language(file_path)
+        code_fence = f"```{lang}" if lang else "```"
+        lines.append(code_fence)
+        if content:
+            lines.append(content)
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines)
