@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code-to-markdown-context-dumper"
+version = "0.1.0"
+description = "Convert source code trees into structured markdown for LLM context"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Google DeepMind Team"},
+]
+requires-python = ">=3.10"
+dependencies = []
