@@ -1,4 +1,5 @@
 import os
+from pathlib import PurePath
 import mimetypes
 
 # Sub-task: [f01-s1] Implement basic file discovery and filtering in core.py
@@ -121,3 +122,75 @@ def discover_files(root_dir: str, ignore_dirs=None, ignore_files=None, ignore_bi
             discovered.append(rel_path)
             
     return sorted(discovered)
+
+# Sub-task: [f02-s1] Add support for custom ignore patterns and max file size limits
+
+def matches_any_pattern(rel_path: str, patterns: list) -> bool:
+    """
+    Check if a relative path matches any of the given glob-style patterns.
+
+    Uses PurePath.match for intuitive matching: a pattern like ``*.log``
+    will match ``file.log`` at any directory depth.
+    """
+    p = PurePath(rel_path)
+    for pattern in patterns:
+        if p.match(pattern):
+            return True
+    return False
+
+
+def discover_filtered_files(
+    root_dir: str,
+    ignore_dirs=None,
+    ignore_files=None,
+    ignore_binary=True,
+    ignore_patterns=None,
+    max_size=None,
+) -> list:
+    """
+    Extended file discovery with glob-style ignore patterns and max file size.
+
+    Parameters
+    ----------
+    root_dir : str
+        Root directory to scan.
+    ignore_dirs : set, optional
+        Directory names to skip entirely (default: DEFAULT_IGNORE_DIRS).
+    ignore_files : set, optional
+        Filenames to skip (default: DEFAULT_IGNORE_FILES).
+    ignore_binary : bool
+        Whether to skip binary files (default: True).
+    ignore_patterns : list of str, optional
+        Glob-style patterns; any file whose relative path matches a pattern
+        is excluded (e.g. ``['*.log', 'secret/*']``).
+    max_size : int, optional
+        Maximum file size in bytes. Files larger than this are excluded.
+
+    Returns
+    -------
+    list of str
+        Sorted list of relative paths for files that pass all filters.
+    """
+    files = discover_files(root_dir, ignore_dirs, ignore_files, ignore_binary)
+
+    if not ignore_patterns and max_size is None:
+        return files
+
+    filtered = []
+    for rel_path in files:
+        filepath = os.path.join(root_dir, rel_path)
+
+        if ignore_patterns and matches_any_pattern(rel_path, ignore_patterns):
+            continue
+
+        if max_size is not None:
+            try:
+                if os.path.getsize(filepath) > max_size:
+                    continue
+            except OSError:
+                continue
+
+        filtered.append(rel_path)
+
+    return filtered
+
