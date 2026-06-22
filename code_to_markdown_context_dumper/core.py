@@ -56,7 +56,7 @@ def is_binary_file(filepath: str) -> bool:
         return True
     return False
 
-def should_ignore(path: str, root_dir: str, ignore_dirs=None, ignore_files=None) -> bool:
+def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None) -> bool:
     """
     Check if a file or directory path should be ignored.
     """
@@ -86,7 +86,7 @@ def should_ignore(path: str, root_dir: str, ignore_dirs=None, ignore_files=None)
             
     return False
 
-def discover_files(root_dir: str, ignore_dirs=None, ignore_files=None, ignore_binary=True) -> list:
+def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None, ignore_binary: bool = True) -> list[str]:
     """
     List files in root_dir, ignoring directories and files in ignore list and optionally binary files.
     Returns sorted list of relative paths.
@@ -125,7 +125,7 @@ def discover_files(root_dir: str, ignore_dirs=None, ignore_files=None, ignore_bi
 
 # Sub-task: [f02-s1] Add support for custom ignore patterns and max file size limits
 
-def matches_any_pattern(rel_path: str, patterns: list) -> bool:
+def matches_any_pattern(rel_path: str, patterns: list[str]) -> bool:
     """
     Check if a relative path matches any of the given glob-style patterns.
 
@@ -141,12 +141,12 @@ def matches_any_pattern(rel_path: str, patterns: list) -> bool:
 
 def discover_filtered_files(
     root_dir: str,
-    ignore_dirs=None,
-    ignore_files=None,
-    ignore_binary=True,
-    ignore_patterns=None,
-    max_size=None,
-) -> list:
+    ignore_dirs: set[str] | None = None,
+    ignore_files: set[str] | None = None,
+    ignore_binary: bool = True,
+    ignore_patterns: list[str] | None = None,
+    max_size: int | None = None,
+) -> list[str]:
     """
     Extended file discovery with glob-style ignore patterns and max file size.
 
@@ -264,7 +264,7 @@ def _infer_language(file_path: str) -> str:
 
 
 def format_markdown_context(
-    files: list,
+    files: list[tuple[str, str]],
     root_label: str = "Project Context",
 ) -> str:
     """
