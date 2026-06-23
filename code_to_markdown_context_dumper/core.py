@@ -30,7 +30,29 @@ DEFAULT_IGNORE_FILES = {
 def is_binary_file(filepath: str) -> bool:
     """
     Check if a file is binary by looking at its content.
-    Reads a chunk of bytes and checks for null bytes or a high ratio of non-text bytes.
+
+    Reads the first 1024 bytes and checks for null bytes or a high ratio
+    of non-text bytes. Non-existent paths and directories are treated as
+    non-binary. Files that cannot be read are conservatively treated as
+    binary.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to check.
+
+    Returns
+    -------
+    bool
+        ``True`` if the file is binary, ``False`` otherwise.
+
+    Notes
+    -----
+    - Empty files are treated as non-binary.
+    - Unreadable files (e.g. permission denied) are treated as binary.
+    - The heuristic threshold (30% non-text bytes) may misclassify files
+      with many non-ASCII text characters (e.g. UTF-16, heavily-encoded
+      text) as binary.
     """
     if not os.path.exists(filepath) or os.path.isdir(filepath):
         return False
@@ -58,7 +80,28 @@ def is_binary_file(filepath: str) -> bool:
 
 def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None) -> bool:
     """
-    Check if a file or directory path should be ignored.
+    Determine whether a path should be ignored based on its directory
+    ancestry and final component name.
+
+    A path is ignored when any ancestor directory is in *ignore_dirs*, or
+    when the final component is a matching directory name (in *ignore_dirs*)
+    or a matching file name (in *ignore_files*).
+
+    Parameters
+    ----------
+    path : str
+        Absolute or relative path to the file or directory to check.
+    root_dir : str
+        Root directory used to compute the relative path for matching.
+    ignore_dirs : set of str, optional
+        Directory names to ignore (default: ``DEFAULT_IGNORE_DIRS``).
+    ignore_files : set of str, optional
+        File names to ignore (default: ``DEFAULT_IGNORE_FILES``).
+
+    Returns
+    -------
+    bool
+        ``True`` if the path should be ignored, ``False`` otherwise.
     """
     if ignore_dirs is None:
         ignore_dirs = DEFAULT_IGNORE_DIRS
@@ -88,8 +131,36 @@ def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None,
 
 def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None, ignore_binary: bool = True) -> list[str]:
     """
-    List files in root_dir, ignoring directories and files in ignore list and optionally binary files.
-    Returns sorted list of relative paths.
+    Walk *root_dir* and collect relative paths of discoverable files.
+
+    Ignores directories matching *ignore_dirs* and files matching
+    *ignore_files*. Optionally skips binary files detected via a
+    content heuristic.
+
+    Parameters
+    ----------
+    root_dir : str
+        Root directory to scan.
+    ignore_dirs : set of str, optional
+        Directory names to skip entirely (default: ``DEFAULT_IGNORE_DIRS``).
+        Matched directories are pruned from ``os.walk`` so their contents
+        are never visited.
+    ignore_files : set of str, optional
+        File names to skip (default: ``DEFAULT_IGNORE_FILES``).
+    ignore_binary : bool
+        Whether to skip binary files (default: ``True``).
+
+    Returns
+    -------
+    list of str
+        Sorted list of file paths relative to *root_dir*.
+
+    Notes
+    -----
+    - Only files (not directories) are included in the result.
+    - Symlinks are followed by ``os.walk`` on most platforms.
+    - Binary detection uses :func:`is_binary_file` and may produce
+      false positives for heavily-encoded text files.
     """
     discovered = []
     root_dir = os.path.abspath(root_dir)
@@ -129,8 +200,28 @@ def matches_any_pattern(rel_path: str, patterns: list[str]) -> bool:
     """
     Check if a relative path matches any of the given glob-style patterns.
 
-    Uses PurePath.match for intuitive matching: a pattern like ``*.log``
+    Uses ``PurePath.match`` for matching, so a pattern like ``*.log``
     will match ``file.log`` at any directory depth.
+
+    Parameters
+    ----------
+    rel_path : str
+        Relative path to test (forward- or backslash-separated).
+    patterns : list of str
+        Glob-style patterns to check against.
+
+    Returns
+    -------
+    bool
+        ``True`` if *rel_path* matches at least one pattern,
+        ``False`` otherwise.
+
+    Notes
+    -----
+    - Matching is performed on the full relative path, not just the file
+      name, so ``secret/*`` will correctly exclude files in a ``secret/``
+      directory.
+    - Patterns that are not valid globs may silently match nothing.
     """
     p = PurePath(rel_path)
     for pattern in patterns:
