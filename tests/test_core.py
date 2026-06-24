@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from code_to_markdown_context_dumper.core import discover_files, is_binary_file, should_ignore, discover_filtered_files
+from code_to_markdown_context_dumper.core import discover_files, is_binary_file, should_ignore, discover_filtered_files, format_markdown_context
 
 def test_is_binary_file():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -255,3 +255,110 @@ def test_discover_filtered_files_no_filters():
         with open(os.path.join(tmpdir, "README.md"), "w") as f:
             f.write("# Project")
         assert discover_filtered_files(tmpdir) == discover_files(tmpdir)
+
+
+# ── [f04-s3] Tests for edge cases in file discovery and markdown generation ──
+
+
+def test_discover_files_root_is_file():
+    """Passing a file path as root returns an empty list."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "file.txt")
+        with open(filepath, "w") as f:
+            f.write("not a directory")
+        assert discover_files(filepath) == []
+
+
+def test_discover_filtered_files_root_is_file():
+    """discover_filtered_files with a file path as root returns an empty list."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "file.txt")
+        with open(filepath, "w") as f:
+            f.write("not a directory")
+        assert discover_filtered_files(filepath) == []
+
+
+def test_discover_files_zero_length_files():
+    """Zero-length text files are discovered and not misclassified as binary."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "empty.py"), "w") as f:
+            pass
+        with open(os.path.join(tmpdir, "zero.txt"), "w") as f:
+            pass
+        files = discover_files(tmpdir)
+        assert "empty.py" in files
+        assert "zero.txt" in files
+
+
+def test_discover_filtered_files_zero_length_files():
+    """Zero-length files are included when no filters exclude them."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "empty.log"), "w") as f:
+            pass
+        with open(os.path.join(tmpdir, "data.txt"), "w") as f:
+            f.write("content")
+        files = discover_filtered_files(tmpdir, ignore_patterns=["*.md"], max_size=1000)
+        assert "empty.log" in files
+        assert "data.txt" in files
+
+
+def test_discover_files_deeply_nested_ignored_dirs():
+    """Deeply nested ignored directories are pruned regardless of depth."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "a", ".git", "b", "c"))
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "a", ".git", "b", "c", "secret.txt"), "w") as f:
+            f.write("secret")
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+        files = discover_files(tmpdir)
+        assert files == ["src/main.py"]
+
+
+def test_discover_filtered_files_deeply_nested_patterns():
+    """Glob ignore patterns match files at any nesting depth."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "a", "b", "c", "d"))
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "a", "b", "c", "d", "deep.py"), "w") as f:
+            f.write("deep")
+        with open(os.path.join(tmpdir, "a", "b", "c", "d", "trace.log"), "w") as f:
+            f.write("log")
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+
+        files = discover_filtered_files(tmpdir, ignore_patterns=["*.log"])
+        assert "a/b/c/d/deep.py" in files
+        assert "src/main.py" in files
+        assert "a/b/c/d/trace.log" not in files
+
+
+def test_discover_filtered_files_deeply_nested_dir_patterns():
+    """Glob patterns with directory components match deep paths."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, "x", "secret", "y"))
+        os.makedirs(os.path.join(tmpdir, "src"))
+        with open(os.path.join(tmpdir, "x", "secret", "y", "config.json"), "w") as f:
+            f.write("{}")
+        with open(os.path.join(tmpdir, "src", "main.py"), "w") as f:
+            f.write("code")
+
+        files = discover_filtered_files(tmpdir, ignore_patterns=["secret/*/*"])
+        assert "src/main.py" in files
+        assert "x/secret/y/config.json" not in files
+
+
+def test_format_markdown_context_zero_length_file():
+    """A zero-length file produces an empty code block."""
+    md = format_markdown_context([("empty.py", "")])
+    assert "## File: empty.py" in md
+    assert "```python" in md
+    # Should have opening and closing fences
+    assert md.count("```") == 2
+
+
+def test_format_markdown_context_root_label():
+    """The root_label parameter controls the top-level heading."""
+    md = format_markdown_context([("file.py", "x")], root_label="Custom")
+    assert md.startswith("# Custom")
