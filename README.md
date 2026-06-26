@@ -7,6 +7,34 @@ single markdown document — ready to paste into an LLM prompt as context.
 Think of it as a minimal, library-form equivalent of `tree | grep` +
 `cat` + fenced code blocks, without any external dependencies or a CLI.
 
+## Quickstart
+
+Install the package and dump your project in one go:
+
+```bash
+pip install code-to-markdown-context-dumper
+```
+
+```python
+from code_to_markdown_context_dumper import discover_files, dump_context
+
+# Walk the current directory and dump everything as markdown.
+files = discover_files(".")
+print(dump_context(files))
+# ### setup.py
+#
+# ``` python
+# from setuptools import setup
+# ...
+# ```
+#
+# ### src/main.py
+# ...
+```
+
+For a complete list of available functions and their parameters, see the
+[API Reference](#api-reference).
+
 ## Features
 
 - **File discovery** — walks any directory tree, skips binaries and junk
