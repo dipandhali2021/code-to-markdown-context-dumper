@@ -1,6 +1,5 @@
 import os
 from pathlib import PurePath
-import mimetypes
 
 # Sub-task: [f01-s1] Implement basic file discovery and filtering in core.py
 # Modify ONLY code_to_markdown_context_dumper/core.py
@@ -56,7 +55,7 @@ def is_binary_file(filepath: str) -> bool:
     """
     if not os.path.exists(filepath) or os.path.isdir(filepath):
         return False
-    
+
     # Try reading the first 1024 bytes
     try:
         with open(filepath, 'rb') as f:
@@ -116,7 +115,7 @@ def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None,
     for part in parts[:-1]:
         if part in ignore_dirs:
             return True
-    
+
     # Check if the final file/directory name matches ignore_dirs or ignore_files
     if parts:
         last_part = parts[-1]
@@ -126,7 +125,7 @@ def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None,
         else:
             if last_part in ignore_files:
                 return True
-            
+
     return False
 
 def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None, ignore_binary: bool = True) -> list[str]:
@@ -164,34 +163,34 @@ def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_fi
     """
     discovered = []
     root_dir = os.path.abspath(root_dir)
-    
+
     for dirpath, dirnames, filenames in os.walk(root_dir):
         # Modify dirnames in-place to prune traversal of ignored directories
         if ignore_dirs is None:
             ignore_dirs_set = DEFAULT_IGNORE_DIRS
         else:
             ignore_dirs_set = set(ignore_dirs)
-            
+
         dirnames[:] = [d for d in dirnames if d not in ignore_dirs_set]
-        
+
         for filename in filenames:
             filepath = os.path.join(dirpath, filename)
             rel_path = os.path.relpath(filepath, root_dir)
-            
+
             # Check ignored files
             if ignore_files is None:
                 ignore_files_set = DEFAULT_IGNORE_FILES
             else:
                 ignore_files_set = set(ignore_files)
-                
+
             if filename in ignore_files_set:
                 continue
-                
+
             if ignore_binary and is_binary_file(filepath):
                 continue
-                
+
             discovered.append(rel_path)
-            
+
     return sorted(discovered)
 
 # Sub-task: [f02-s1] Add support for custom ignore patterns and max file size limits
