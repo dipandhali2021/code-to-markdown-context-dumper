@@ -1,6 +1,8 @@
 import os
 import tempfile
+
 from code_to_markdown_context_dumper.core import discover_files, is_binary_file, should_ignore, discover_filtered_files, format_markdown_context
+
 
 def test_is_binary_file():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -17,6 +19,7 @@ def test_is_binary_file():
         assert not is_binary_file(txt_path)
         assert is_binary_file(bin_path)
 
+
 def test_should_ignore():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Mock folder structure isn't fully needed, but we check path matching.
@@ -25,6 +28,7 @@ def test_should_ignore():
         assert should_ignore(os.path.join(root, "node_modules", "package.json"), root)
         assert should_ignore(os.path.join(root, "subdir", ".DS_Store"), root)
         assert not should_ignore(os.path.join(root, "src", "main.py"), root)
+
 
 def test_discover_files():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -51,7 +55,6 @@ def test_discover_files():
         # Discover files with binary included
         files_with_binary = discover_files(tmpdir, ignore_binary=False)
         assert files_with_binary == ["src/helper.py", "src/logo.png", "src/main.py"]
-
 
 
 def test_discover_files_empty_dir():
@@ -138,6 +141,7 @@ def test_discover_files_ignored_dirs_not_traversed():
 
 
 # ── Helper: format a list of file paths as a markdown context snippet ──────────
+
 
 def _files_to_markdown(file_list, root_label="Project Context"):
     """Convert a sorted list of file paths into a markdown context string."""

@@ -26,6 +26,7 @@ DEFAULT_IGNORE_FILES = {
     "desktop.ini",
 }
 
+
 def is_binary_file(filepath: str) -> bool:
     """
     Check if a file is binary by looking at its content.
@@ -77,6 +78,7 @@ def is_binary_file(filepath: str) -> bool:
         return True
     return False
 
+
 def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None) -> bool:
     """
     Determine whether a path should be ignored based on its directory
@@ -127,6 +129,7 @@ def should_ignore(path: str, root_dir: str, ignore_dirs: set[str] | None = None,
                 return True
 
     return False
+
 
 def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_files: set[str] | None = None, ignore_binary: bool = True) -> list[str]:
     """
@@ -194,6 +197,7 @@ def discover_files(root_dir: str, ignore_dirs: set[str] | None = None, ignore_fi
     return sorted(discovered)
 
 # Sub-task: [f02-s1] Add support for custom ignore patterns and max file size limits
+
 
 def matches_any_pattern(rel_path: str, patterns: list[str]) -> bool:
     """
@@ -288,6 +292,7 @@ def discover_filtered_files(
 # Sub-task: [f01-s2] Implement markdown generation logic in core.py
 # Acceptance: Function to format file contents into markdown code blocks
 # with file path headers is implemented.
+
 
 def _infer_language(file_path: str) -> str:
     """
