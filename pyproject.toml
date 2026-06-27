@@ -15,10 +15,12 @@ requires-python = ">=3.10"
 dependencies = []
 
 [tool.ruff]
+line-length = 120
 target-version = "py310"
+src = ["code_to_markdown_context_dumper", "tests"]
 
 [tool.ruff.lint]
 ignore = [
-    "E501",   # line too long (off by default but explicit)
-    "W505",   # doc line too long (off by default but explicit)
+    "E501",   # line too long
+    "W505",   # doc line too long
 ]

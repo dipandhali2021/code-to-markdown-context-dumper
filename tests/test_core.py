@@ -285,9 +285,9 @@ def test_discover_files_zero_length_files():
     """Zero-length text files are discovered and not misclassified as binary."""
     with tempfile.TemporaryDirectory() as tmpdir:
         os.makedirs(os.path.join(tmpdir, "src"))
-        with open(os.path.join(tmpdir, "empty.py"), "w") as f:
+        with open(os.path.join(tmpdir, "empty.py"), "w"):
             pass
-        with open(os.path.join(tmpdir, "zero.txt"), "w") as f:
+        with open(os.path.join(tmpdir, "zero.txt"), "w"):
             pass
         files = discover_files(tmpdir)
         assert "empty.py" in files
@@ -297,7 +297,7 @@ def test_discover_files_zero_length_files():
 def test_discover_filtered_files_zero_length_files():
     """Zero-length files are included when no filters exclude them."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        with open(os.path.join(tmpdir, "empty.log"), "w") as f:
+        with open(os.path.join(tmpdir, "empty.log"), "w"):
             pass
         with open(os.path.join(tmpdir, "data.txt"), "w") as f:
             f.write("content")
